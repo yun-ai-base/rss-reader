@@ -554,8 +554,17 @@ const SearchFeed = {
 
   async addFromBtn(btn) {
     const item = btn.closest('.search-feed-item');
-    const url = item.dataset.url;
+    let url = item.dataset.url;
     const title = item.dataset.title;
+
+    // 解码可能的 URL 编码（Feedly feedId 格式）
+    try { url = decodeURIComponent(url); } catch {}
+
+    if (!url || !/^https?:\/\//.test(url)) {
+      Utils.toast('无效的 RSS 地址', 'error');
+      return;
+    }
+
     btn.disabled = true;
     btn.textContent = '添加中...';
 
@@ -565,6 +574,8 @@ const SearchFeed = {
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-secondary');
       item.classList.add('added');
+      // 关闭搜索模态框
+      App.closeSearchFeedModal();
     } catch (e) {
       btn.disabled = false;
       btn.textContent = '添加';

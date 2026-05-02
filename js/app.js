@@ -198,6 +198,9 @@ const App = {
         case 'delete-bookmark':
           if (id) BookmarksPage.deleteBookmark(id);
           break;
+        case 'add-search-feed':
+          SearchFeed.addFromBtn(target);
+          break;
       }
     });
   },
@@ -314,16 +317,31 @@ const App = {
     document.getElementById('searchFeedInput').focus();
   },
 
+  closeSearchFeedModal() {
+    const modal = document.getElementById('searchFeedModal');
+    if (modal) {
+      modal.classList.add('closing');
+      setTimeout(() => {
+        modal.style.display = 'none';
+        modal.classList.remove('open', 'closing');
+      }, 200);
+    }
+  },
+
   async addFeedFromUrl(url, title) {
+    if (!url) throw new Error('URL 不能为空');
+
     const parsed = await RSSParser.fetchFeed(url);
+    if (!parsed || !parsed.items) throw new Error('无法解析该 RSS 源');
+
     const feed = DataStore.addFeed({
-      title: title || parsed.title,
+      title: title || parsed.title || url,
       url,
-      link: parsed.link,
-      description: parsed.description,
+      link: parsed.link || '',
+      description: parsed.description || '',
       favicon: Utils.getFaviconUrl(url)
     });
-    const articles = parsed.items.map(item => ({
+    const articles = (parsed.items || []).map(item => ({
       ...item,
       feedId: feed.id,
       feedTitle: feed.title
