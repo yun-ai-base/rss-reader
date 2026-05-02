@@ -126,6 +126,18 @@ const App = {
     document.getElementById('confirmArticleTags')?.addEventListener('click', () => this.saveArticleTags());
     document.getElementById('addNewTagBtn')?.addEventListener('click', () => this.addNewTag());
 
+    // 搜索订阅源
+    document.getElementById('searchFeedBtn')?.addEventListener('click', () => {
+      const keyword = document.getElementById('searchFeedInput').value;
+      SearchFeed.search(keyword);
+    });
+    document.getElementById('searchFeedInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const keyword = e.target.value;
+        SearchFeed.search(keyword);
+      }
+    });
+
     // 数据管理
     document.getElementById('exportDataBtn')?.addEventListener('click', () => BookmarksPage.exportData());
     document.getElementById('importDataBtn')?.addEventListener('click', () => BookmarksPage.importData());
@@ -291,6 +303,35 @@ const App = {
     document.getElementById('feedUrl').value = '';
     document.getElementById('feedName').value = '';
     document.getElementById('feedUrl').focus();
+  },
+
+  showSearchFeedModal() {
+    const modal = document.getElementById('searchFeedModal');
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+    document.getElementById('searchFeedInput').value = '';
+    document.getElementById('searchFeedResults').innerHTML = '<div class="search-feed-hint">输入关键词搜索相关 RSS 订阅源</div>';
+    document.getElementById('searchFeedInput').focus();
+  },
+
+  async addFeedFromUrl(url, title) {
+    const parsed = await RSSParser.fetchFeed(url);
+    const feed = DataStore.addFeed({
+      title: title || parsed.title,
+      url,
+      link: parsed.link,
+      description: parsed.description,
+      favicon: Utils.getFaviconUrl(url)
+    });
+    const articles = parsed.items.map(item => ({
+      ...item,
+      feedId: feed.id,
+      feedTitle: feed.title
+    }));
+    DataStore.addArticles(articles);
+    FeedsPage.render();
+    FeedsPage.renderArticleList();
+    Utils.toast(`已添加: ${feed.title}，${articles.length} 篇文章`, 'success');
   },
 
   /**

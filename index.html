@@ -127,6 +127,13 @@
           <!-- 动态生成 -->
         </div>
         <div class="sidebar-footer">
+          <button id="searchFeedTrigger" class="add-feed-btn" onclick="App.showSearchFeedModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            搜索订阅源
+          </button>
           <button id="addFeedBtn" class="add-feed-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -250,6 +257,30 @@
 
     <!-- 主内容区（运行时由 template 克隆填充） -->
     <main class="main" id="mainContent"></main>
+  </div>
+
+  <!-- 模态框：搜索订阅源 -->
+  <div class="modal-overlay" id="searchFeedModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>搜索订阅源</h3>
+        <button class="modal-close" data-close="searchFeedModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="search-feed-input-wrap">
+          <input type="text" id="searchFeedInput" placeholder="输入关键词，如：科技、设计、BBC..." autocomplete="off">
+          <button class="btn btn-primary" id="searchFeedBtn">搜索</button>
+        </div>
+        <div class="search-feed-results" id="searchFeedResults">
+          <div class="search-feed-hint">输入关键词搜索相关 RSS 订阅源</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 模态框：添加订阅源 -->

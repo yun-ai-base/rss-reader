@@ -288,12 +288,19 @@ const FeedsPage = {
         <div class="page-header">
           <h2>订阅源管理</h2>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-primary" onclick="App.showAddFeedModal()">
+            <button class="btn btn-primary" onclick="App.showSearchFeedModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              搜索订阅源
+            </button>
+            <button class="btn btn-secondary" onclick="App.showAddFeedModal()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                 <path d="M12 5v14"></path>
                 <path d="M5 12h14"></path>
               </svg>
-              添加订阅源
+              手动添加
             </button>
             <button class="btn btn-secondary" onclick="App.refreshAll()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -418,5 +425,109 @@ const FeedsPage = {
   }
 };
 
+/**
+ * 搜索订阅源
+ */
+const SearchFeed = {
+  isLoading: false,
+
+  async search(keyword) {
+    if (!keyword.trim() || this.isLoading) return;
+    this.isLoading = true;
+    this.showLoading();
+
+    const proxies = [
+      'https://api.allorigins.win/raw?url=',
+      'https://api.codetabs.com/v1/proxy?quest='
+    ];
+    const apiUrl = `https://cloud.feedly.com/v3/search/feeds?query=${encodeURIComponent(keyword)}&count=15`;
+
+    for (const proxy of proxies) {
+      try {
+        const proxyUrl = proxy + encodeURIComponent(apiUrl);
+        const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          this.renderResults(data.results);
+          this.isLoading = false;
+          return;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    this.renderEmpty();
+    this.isLoading = false;
+  },
+
+  showLoading() {
+    const el = document.getElementById('searchFeedResults');
+    el.innerHTML = '<div class="search-feed-loading"><div class="spinner"></div> 搜索中...</div>';
+  },
+
+  renderEmpty() {
+    const el = document.getElementById('searchFeedResults');
+    el.innerHTML = '<div class="search-feed-hint">未找到相关订阅源，换个关键词试试</div>';
+  },
+
+  renderResults(results) {
+    const el = document.getElementById('searchFeedResults');
+    const existingFeeds = DataStore.getFeeds();
+    const existingUrls = new Set(existingFeeds.map(f => f.url));
+
+    el.innerHTML = results.map(item => {
+      const feed = item;
+      const title = feed.title || '未知源';
+      const url = feed.feedId || '';
+      const websiteUrl = feed.website || '';
+      const description = feed.description || '';
+      const subscribers = feed.subscribers || 0;
+      const isAdded = existingUrls.has(url);
+      const faviconUrl = websiteUrl ? `https://www.google.com/s2/favicons?domain=${new URL(websiteUrl).hostname}&sz=32` : '';
+
+      return `
+        <div class="search-feed-item ${isAdded ? 'added' : ''}" data-url="${Utils.escapeHtml(url)}">
+          <div class="search-feed-info">
+            <div class="search-feed-title">
+              ${faviconUrl ? `<img class="search-feed-favicon" src="${faviconUrl}" onerror="this.style.display='none'">` : ''}
+              <span>${Utils.escapeHtml(title)}</span>
+            </div>
+            ${description ? `<div class="search-feed-desc">${Utils.escapeHtml(description).substring(0, 100)}</div>` : ''}
+            <div class="search-feed-meta">
+              <span class="search-feed-url">${Utils.escapeHtml(url)}</span>
+              ${subscribers > 0 ? `<span class="search-feed-subs">${subscribers > 1000 ? Math.round(subscribers/1000) + 'k' : subscribers} 订阅</span>` : ''}
+            </div>
+          </div>
+          <button class="btn ${isAdded ? 'btn-secondary' : 'btn-primary'} btn-sm search-feed-add-btn"
+            onclick="SearchFeed.addFeed('${Utils.escapeHtml(url)}', '${Utils.escapeHtml(title).replace(/'/g, "\\'")}', this)"
+            ${isAdded ? 'disabled' : ''}>
+            ${isAdded ? '已添加' : '添加'}
+          </button>
+        </div>
+      `;
+    }).join('');
+  },
+
+  async addFeed(url, title, btn) {
+    btn.disabled = true;
+    btn.textContent = '添加中...';
+
+    try {
+      await App.addFeedFromUrl(url, title);
+      btn.textContent = '已添加';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+      btn.closest('.search-feed-item').classList.add('added');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '添加';
+      Toast.show('添加失败: ' + e.message, 'error');
+    }
+  }
+};
+
 // 导出到全局
 window.FeedsPage = FeedsPage;
+window.SearchFeed = SearchFeed;
