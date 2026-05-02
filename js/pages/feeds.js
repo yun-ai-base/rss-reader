@@ -433,6 +433,14 @@ const SearchFeed = {
 
   async search(keyword) {
     if (!keyword.trim() || this.isLoading) return;
+
+    // 如果输入的是 URL，直接尝试添加
+    const trimmed = keyword.trim();
+    if (/^https?:\/\//.test(trimmed)) {
+      this.showDirectAdd(trimmed);
+      return;
+    }
+
     this.isLoading = true;
     this.showLoading();
 
@@ -460,6 +468,35 @@ const SearchFeed = {
 
     this.renderEmpty();
     this.isLoading = false;
+  },
+
+  showDirectAdd(url) {
+    const el = document.getElementById('searchFeedResults');
+    const existingFeeds = DataStore.getFeeds();
+    const isAdded = existingFeeds.some(f => f.url === url);
+
+    let hostname = '';
+    try { hostname = new URL(url).hostname; } catch(e) {}
+    const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : '';
+
+    el.innerHTML = `
+      <div class="search-feed-hint" style="margin-bottom: 12px;">检测到 RSS 地址，点击添加</div>
+      <div class="search-feed-item ${isAdded ? 'added' : ''}" data-url="${Utils.escapeHtml(url)}" data-title="">
+        <div class="search-feed-info">
+          <div class="search-feed-title">
+            ${faviconUrl ? `<img class="search-feed-favicon" src="${faviconUrl}" onerror="this.style.display='none'">` : ''}
+            <span>${Utils.escapeHtml(url)}</span>
+          </div>
+          <div class="search-feed-meta">
+            <span class="search-feed-url">将自动获取源标题和文章</span>
+          </div>
+        </div>
+        <button class="btn ${isAdded ? 'btn-secondary' : 'btn-primary'} btn-sm"
+          onclick="SearchFeed.addFromBtn(this)" ${isAdded ? 'disabled' : ''}>
+          ${isAdded ? '已添加' : '添加'}
+        </button>
+      </div>
+    `;
   },
 
   showLoading() {
