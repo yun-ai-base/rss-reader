@@ -105,22 +105,30 @@ const ReaderPage = {
         if (attr.name.startsWith('on')) {
           el.removeAttribute(attr.name);
         }
-        // 移除包含 expression 或 javascript 的 style 属性
+        // 移除危险 style 属性
         if (attr.name === 'style') {
           const val = attr.value.toLowerCase();
-          if (val.includes('expression') || val.includes('javascript:') || val.includes('url(') && val.includes('javascript:')) {
+          if (val.includes('expression') || val.includes('javascript:') || val.includes('url(') || val.includes('behavior') || val.includes('@import')) {
             el.removeAttribute('style');
           }
         }
       });
-      // 移除 javascript: URI
-      ['href', 'src', 'action'].forEach(attr => {
+      // 移除 javascript: URI 和 data: URI
+      ['href', 'src', 'action', 'xlink:href'].forEach(attr => {
         if (el.hasAttribute(attr)) {
           const val = el.getAttribute(attr).trim().toLowerCase();
-          if (val.startsWith('javascript:') || val.startsWith('data:text/html')) {
+          if (val.startsWith('javascript:') || val.startsWith('data:text/html') || val.startsWith('data:image/svg')) {
             el.removeAttribute(attr);
           }
         }
+      });
+    });
+
+    // SVG 深度净化：移除危险子元素
+    div.querySelectorAll('svg').forEach(svg => {
+      svg.querySelectorAll('foreignObject, use, animate, set, animateTransform, handler').forEach(el => el.remove());
+      Array.from(svg.attributes).forEach(attr => {
+        if (attr.name.startsWith('on')) svg.removeAttribute(attr.name);
       });
     });
 

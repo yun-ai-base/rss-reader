@@ -77,14 +77,27 @@ const DataStore = {
 
   // ===== 订阅源 =====
 
+  /**
+   * 标准化 URL 用于比较（去协议差异、去尾斜杠、统一小写域名）
+   */
+  normalizeUrl(url) {
+    try {
+      const u = new URL(url);
+      return u.origin.replace(/\/$/, '') + u.pathname.replace(/\/$/, '') + u.search + u.hash;
+    } catch {
+      return (url || '').trim().replace(/\/$/, '').toLowerCase();
+    }
+  },
+
   getFeeds() {
     const feeds = this.get(this.KEYS.FEEDS) || [];
-    // 按URL去重，保留最新的
+    // 按标准化URL去重，保留最新的
     const urlMap = new Map();
     for (const f of feeds) {
-      const existing = urlMap.get(f.url);
+      const key = this.normalizeUrl(f.url);
+      const existing = urlMap.get(key);
       if (!existing || (f.createdAt || 0) > (existing.createdAt || 0)) {
-        urlMap.set(f.url, f);
+        urlMap.set(key, f);
       }
     }
     if (urlMap.size < feeds.length) {
@@ -101,6 +114,11 @@ const DataStore = {
 
   addFeed(feed) {
     const feeds = this.getFeeds();
+    // 防止重复添加相同URL的订阅源
+    const normUrl = this.normalizeUrl(feed.url);
+    const existing = feeds.find(f => this.normalizeUrl(f.url) === normUrl);
+    if (existing) return existing;
+
     feed.id = Utils.generateId();
     feed.createdAt = Date.now();
     feed.lastUpdated = null;
@@ -416,6 +434,27 @@ const DataStore = {
     // 限制导入数据量
     if (data.articles && data.articles.length > 10000) return false;
     if (data.bookmarks && data.bookmarks.length > 5000) return false;
+
+    // 字段级校验
+    if (data.feeds) {
+      data.feeds = data.feeds.map(f => ({
+        ...f,
+        title: String(f.title || '').substring(0, 200),
+        url: String(f.url || '').substring(0, 2000),
+        description: String(f.description || '').substring(0, 500),
+        group: String(f.group || '').substring(0, 50)
+      }));
+    }
+    if (data.articles) {
+      data.articles = data.articles.map(a => ({
+        ...a,
+        title: String(a.title || '').substring(0, 500),
+        content: String(a.content || '').substring(0, 50000),
+        summary: String(a.summary || '').substring(0, 1000),
+        link: String(a.link || '').substring(0, 2000),
+        tags: Array.isArray(a.tags) ? a.tags.slice(0, 20).map(t => String(t).substring(0, 30)) : []
+      }));
+    }
 
     // 保存数据
     if (data.feeds) this.saveFeeds(data.feeds);

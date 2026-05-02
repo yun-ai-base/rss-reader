@@ -142,9 +142,10 @@ const FeedsPage = {
    */
   restoreGroupState() {
     const collapsed = JSON.parse(localStorage.getItem('rss_collapsed_groups') || '[]');
-    collapsed.forEach(name => {
-      const group = document.querySelector(`.feed-group[data-group="${name}"]`);
-      if (group) group.classList.add('collapsed');
+    document.querySelectorAll('.feed-group').forEach(group => {
+      if (collapsed.includes(group.dataset.group)) {
+        group.classList.add('collapsed');
+      }
     });
   },
 
