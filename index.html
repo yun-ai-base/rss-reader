@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS 阅读器</title>
+  <!-- 字体：Editorial 风格 -->
+  <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+  <link href="https://fonts.loli.net/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="header-left">
+        <button id="menuToggle" class="menu-toggle" title="菜单" onclick="App.toggleSidebar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18"></path>
+            <path d="M3 6h18"></path>
+            <path d="M3 18h18"></path>
+          </svg>
+        </button>
+        <a href="#/" class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 11a9 9 0 0 1 9 9"></path>
+            <path d="M4 4a16 16 0 0 1 16 16"></path>
+            <circle cx="5" cy="19" r="1"></circle>
+          </svg>
+          <span class="logo-text">RSS Reader</span>
+        </a>
+      </div>
+      <div class="header-center">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input type="text" id="searchInput" placeholder="搜索文章..." autocomplete="off">
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="themeToggle" class="theme-toggle" title="切换主题">
+          <svg id="themeIconDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg id="themeIconLight" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <a href="#/bookmarks" class="nav-btn" title="书签">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
+          </svg>
+        </a>
+        <a href="#/tags" class="nav-btn" title="标签">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+            <path d="M7 7h.01"></path>
+          </svg>
+        </a>
+        <a href="#/feeds" class="nav-btn" title="订阅源管理">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </a>
+        <button id="refreshBtn" class="nav-btn" title="刷新全部">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+            <path d="M16 16h5v5"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 移动端遮罩 -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="App.closeSidebar()"></div>
+
+    <!-- 主内容区模板（用于 restoreReaderView 克隆） -->
+    <template id="readerViewTemplate">
+      <!-- 左侧：订阅源列表 -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h3>订阅源</h3>
+          <button id="addGroupBtn" class="icon-btn" title="添加分组">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="sidebar-nav" id="sidebarNav">
+          <a href="#/bookmarks" class="sidebar-nav-item" onclick="App.closeSidebar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
+            </svg>
+            书签
+          </a>
+          <a href="#/tags" class="sidebar-nav-item" onclick="App.closeSidebar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+              <path d="M7 7h.01"></path>
+            </svg>
+            标签
+          </a>
+          <a href="#/feeds" class="sidebar-nav-item" onclick="App.closeSidebar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            管理
+          </a>
+        </div>
+        <div class="feed-list" id="feedList">
+          <!-- 动态生成 -->
+        </div>
+        <div class="sidebar-footer">
+          <button id="addFeedBtn" class="add-feed-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M8 12h8"></path>
+              <path d="M12 8v8"></path>
+            </svg>
+            添加订阅源
+          </button>
+        </div>
+      </aside>
+
+      <!-- 中间：文章列表 -->
+      <section class="article-list" id="articleList">
+        <div class="list-header">
+          <h3 id="listTitle">全部文章</h3>
+          <div class="list-actions">
+            <button id="filterReadBtn" class="filter-btn" title="显示未读">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+            <button id="sortBtn" class="filter-btn" title="排序：新→旧">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m3 16 4 4 4-4"></path>
+                <path d="M7 20V4"></path>
+                <path d="m21 8-4-4-4 4"></path>
+                <path d="M17 4v16"></path>
+              </svg>
+            </button>
+            <button id="markAllReadBtn" class="filter-btn" title="全部标为已读">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="articles" id="articles">
+          <!-- 动态生成 -->
+        </div>
+        <div class="list-empty" id="listEmpty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path>
+            <path d="M14 2v6h6"></path>
+            <path d="M16 13H8"></path>
+            <path d="M16 17H8"></path>
+            <path d="M10 9H8"></path>
+          </svg>
+          <p>暂无文章</p>
+        </div>
+      </section>
+
+      <!-- 右侧：阅读区域 -->
+      <article class="reader" id="reader">
+        <div class="reader-empty" id="readerEmpty">
+          <div class="reader-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+          </div>
+          <h3>开始阅读</h3>
+          <p>从左侧列表选择一篇文章，或使用快捷键快速导航</p>
+          <div class="reader-empty-shortcuts">
+            <span class="shortcut-item"><span class="shortcut-key">J</span> 下一篇</span>
+            <span class="shortcut-item"><span class="shortcut-key">K</span> 上一篇</span>
+            <span class="shortcut-item"><span class="shortcut-key">Enter</span> 打开</span>
+            <span class="shortcut-item"><span class="shortcut-key">Esc</span> 返回</span>
+          </div>
+        </div>
+        <div class="reader-content" id="readerContent" style="display:none;">
+          <div class="reader-mobile-back" id="readerMobileBack" onclick="App.closeReader()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+            返回
+          </div>
+          <div class="reader-header">
+            <h1 id="readerTitle"></h1>
+            <div class="reader-meta">
+              <span id="readerSource"></span>
+              <span id="readerDate"></span>
+              <div class="reader-actions">
+                <button id="starBtn" class="icon-btn" title="收藏">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                  </svg>
+                </button>
+                <button id="tagArticleBtn" class="icon-btn" title="添加标签">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"></path>
+                    <path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L12 22"></path>
+                    <path d="m5 5 1 1"></path>
+                  </svg>
+                </button>
+                <button id="translateBtn" class="icon-btn" title="翻译文章" onclick="ReaderPage.translateArticle()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m5 8 6 6"></path>
+                    <path d="m4 14 6-6 2-3"></path>
+                    <path d="M2 5h12"></path>
+                    <path d="M7 2h1"></path>
+                    <path d="m22 22-5-10-5 10"></path>
+                    <path d="M14 18h6"></path>
+                  </svg>
+                </button>
+                <a id="openLinkBtn" href="#" target="_blank" class="icon-btn" title="在新标签页打开">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div class="reader-tags" id="readerTags"></div>
+          </div>
+          <div class="reader-body" id="readerBody"></div>
+        </div>
+      </article>
+    </template>
+
+    <!-- 主内容区（运行时由 template 克隆填充） -->
+    <main class="main" id="mainContent"></main>
+  </div>
+
+  <!-- 模态框：添加订阅源 -->
+  <div class="modal-overlay" id="addFeedModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>添加订阅源</h3>
+        <button class="modal-close" data-close="addFeedModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="feedUrl">RSS 地址</label>
+          <input type="url" id="feedUrl" placeholder="https://example.com/feed">
+        </div>
+        <div class="form-group">
+          <label for="feedName">名称（可选）</label>
+          <input type="text" id="feedName" placeholder="自定义名称">
+        </div>
+        <div class="form-group">
+          <label for="feedGroup">分组</label>
+          <select id="feedGroup">
+            <option value="">未分组</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="addFeedModal">取消</button>
+        <button class="btn btn-primary" id="confirmAddFeed">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：添加分组 -->
+  <div class="modal-overlay" id="addGroupModal" style="display:none;">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>添加分组</h3>
+        <button class="modal-close" data-close="addGroupModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="groupName">分组名称</label>
+          <input type="text" id="groupName" placeholder="如：科技、设计、新闻">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="addGroupModal">取消</button>
+        <button class="btn btn-primary" id="confirmAddGroup">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：添加书签 -->
+  <div class="modal-overlay" id="addBookmarkModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>添加书签</h3>
+        <button class="modal-close" data-close="addBookmarkModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="bookmarkUrl">网址</label>
+          <input type="url" id="bookmarkUrl" placeholder="https://example.com">
+        </div>
+        <div class="form-group">
+          <label for="bookmarkTitle">标题</label>
+          <input type="text" id="bookmarkTitle" placeholder="网站标题">
+        </div>
+        <div class="form-group">
+          <label for="bookmarkDesc">描述</label>
+          <textarea id="bookmarkDesc" rows="3" placeholder="简单描述（可选）"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="bookmarkTags">标签</label>
+          <input type="text" id="bookmarkTags" placeholder="用逗号分隔，如：设计,工具,前端">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="addBookmarkModal">取消</button>
+        <button class="btn btn-primary" id="confirmAddBookmark">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：文章标签 -->
+  <div class="modal-overlay" id="articleTagModal" style="display:none;">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>管理标签</h3>
+        <button class="modal-close" data-close="articleTagModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>选择标签</label>
+          <div class="tag-checkboxes" id="tagCheckboxes"></div>
+        </div>
+        <div class="form-group">
+          <label>或新建标签</label>
+          <div class="input-with-btn">
+            <input type="text" id="newTagInput" placeholder="输入新标签名">
+            <button class="btn btn-sm" id="addNewTagBtn">添加</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="articleTagModal">取消</button>
+        <button class="btn btn-primary" id="confirmArticleTags">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：导入/导出 -->
+  <div class="modal-overlay" id="importExportModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>数据管理</h3>
+        <button class="modal-close" data-close="importExportModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="data-actions">
+          <button class="data-action-btn" id="exportDataBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>导出数据</span>
+            <p>下载JSON备份文件</p>
+          </button>
+          <button class="data-action-btn" id="importDataBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>导入数据</span>
+            <p>从JSON文件恢复</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：快捷键帮助 -->
+  <div class="modal-overlay" id="shortcutsModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>键盘快捷键</h3>
+        <button class="modal-close" data-close="shortcutsModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcuts-grid">
+          <div class="shortcut-row"><span class="shortcut-key">J</span> <span>下一篇文章</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">K</span> <span>上一篇文章</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Enter</span> <span>在新标签页打开文章</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Esc</span> <span>返回 / 关闭</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">R</span> <span>刷新全部订阅源</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">?</span> <span>显示此帮助</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：确认操作 -->
+  <div class="modal-overlay" id="confirmModal" style="display:none;">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3 id="confirmTitle">确认操作</h3>
+        <button class="modal-close" onclick="ConfirmModal.cancel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="ConfirmModal.cancel()">取消</button>
+        <button class="btn btn-danger" id="confirmOkBtn" onclick="ConfirmModal.confirm()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右键菜单：订阅源操作 -->
+  <div class="context-menu" id="feedContextMenu" style="display:none;">
+    <div class="context-menu-item" data-action="edit-feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+      </svg>
+      编辑订阅源
+    </div>
+    <div class="context-menu-item" data-action="refresh-feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+        <path d="M3 3v5h5"></path>
+      </svg>
+      刷新订阅源
+    </div>
+    <div class="context-menu-item" data-action="move-feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+        <polyline points="10 17 15 12 10 7"></polyline>
+        <line x1="15" y1="12" x2="3" y2="12"></line>
+      </svg>
+      移动分组
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item context-menu-danger" data-action="delete-feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+      </svg>
+      删除订阅源
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 隐藏的文件输入 -->
+  <input type="file" id="importFileInput" accept=".json" style="display:none;">
+
+  <script src="js/utils.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/rss-parser.js"></script>
+  <script src="js/pages/feeds.js"></script>
+  <script src="js/pages/reader.js"></script>
+  <script src="js/pages/bookmarks.js"></script>
+  <script src="js/pages/tags.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS 阅读器单元测试</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f5f5f5; }
+    .test-container { max-width: 1200px; margin: 0 auto; }
+    .test-header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .test-header h1 { color: #333; margin-bottom: 10px; }
+    .test-header p { color: #666; }
+    .test-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .test-section h2 { color: #444; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .test-case { margin: 10px 0; padding: 15px; background: #f9f9f9; border-radius: 6px; border-left: 4px solid #ddd; }
+    .test-case.pass { border-left-color: #4CAF50; background: #f8fff8; }
+    .test-case.fail { border-left-color: #f44336; background: #fff8f8; }
+    .test-case.running { border-left-color: #2196F3; background: #f8f8ff; }
+    .test-name { font-weight: bold; margin-bottom: 5px; }
+    .test-result { font-size: 0.9em; color: #666; }
+    .test-error { color: #f44336; font-size: 0.9em; margin-top: 5px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 10px; }
+    .btn-primary { background: #2196F3; color: white; }
+    .btn-success { background: #4CAF50; color: white; }
+    .btn-danger { background: #f44336; color: white; }
+    .btn:hover { opacity: 0.9; }
+    .stats { display: flex; gap: 20px; margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 6px; }
+    .stat { text-align: center; }
+    .stat-value { font-size: 24px; font-weight: bold; }
+    .stat-label { font-size: 12px; color: #666; }
+    .stat-pass .stat-value { color: #4CAF50; }
+    .stat-fail .stat-value { color: #f44336; }
+    .stat-total .stat-value { color: #2196F3; }
+    .hidden { display: none; }
+    #testOutput { margin-top: 20px; padding: 15px; background: #1e1e1e; color: #d4d4d4; border-radius: 6px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
+    .log-info { color: #569cd6; }
+    .log-success { color: #4ec9b0; }
+    .log-error { color: #f44747; }
+    .log-warn { color: #cca700; }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <div class="test-header">
+      <h1>RSS 阅读器单元测试</h1>
+      <p>测试所有功能模块的正确性和稳定性</p>
+      <div style="margin-top: 15px;">
+        <button class="btn btn-primary" onclick="runAllTests()">运行所有测试</button>
+        <button class="btn btn-success" onclick="runTestsByModule('utils')">Utils 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('data')">DataStore 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('rss')">RSSParser 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('feeds')">FeedsPage 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('reader')">ReaderPage 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('bookmarks')">BookmarksPage 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('tags')">TagsPage 模块</button>
+        <button class="btn btn-success" onclick="runTestsByModule('app')">App 模块</button>
+        <button class="btn btn-danger" onclick="clearResults()">清除结果</button>
+      </div>
+      <div class="stats">
+        <div class="stat stat-total">
+          <div class="stat-value" id="totalCount">0</div>
+          <div class="stat-label">总测试数</div>
+        </div>
+        <div class="stat stat-pass">
+          <div class="stat-value" id="passCount">0</div>
+          <div class="stat-label">通过</div>
+        </div>
+        <div class="stat stat-fail">
+          <div class="stat-value" id="failCount">0</div>
+          <div class="stat-label">失败</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="passRate">0%</div>
+          <div class="stat-label">通过率</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="testResults"></div>
+    <div id="testOutput" class="hidden"></div>
+  </div>
+
+  <!-- 加载被测试的模块 -->
+  <script src="js/utils.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/rss-parser.js"></script>
+  <script src="js/pages/feeds.js"></script>
+  <script src="js/pages/reader.js"></script>
+  <script src="js/pages/bookmarks.js"></script>
+  <script src="js/pages/tags.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // 测试框架
+    class TestRunner {
+      constructor() {
+        this.tests = [];
+        this.results = { total: 0, pass: 0, fail: 0 };
+        this.currentModule = '';
+      }
+
+      // 添加测试用例
+      addTest(module, name, testFn) {
+        this.tests.push({ module, name, testFn });
+      }
+
+      // 运行所有测试
+      async runAll() {
+        this.results = { total: 0, pass: 0, fail: 0 };
+        this.updateStats();
+        this.showOutput();
+
+        for (const test of this.tests) {
+          await this.runTest(test);
+        }
+
+        this.log(`\n测试完成！总计: ${this.results.total}, 通过: ${this.results.pass}, 失败: ${this.results.fail}`, 'info');
+      }
+
+      // 按模块运行测试
+      async runByModule(module) {
+        this.results = { total: 0, pass: 0, fail: 0 };
+        this.updateStats();
+        this.showOutput();
+
+        const moduleTests = this.tests.filter(t => t.module === module);
+        for (const test of moduleTests) {
+          await this.runTest(test);
+        }
+
+        this.log(`\n${module} 模块测试完成！总计: ${this.results.total}, 通过: ${this.results.pass}, 失败: ${this.results.fail}`, 'info');
+      }
+
+      // 运行单个测试
+      async runTest(test) {
+        this.results.total++;
+        this.updateStats();
+
+        const testId = `test-${this.results.total}`;
+        this.addTestToUI(testId, test.module, test.name);
+
+        try {
+          this.log(`运行测试: ${test.name}`, 'info');
+          await test.testFn();
+          this.results.pass++;
+          this.updateTestStatus(testId, 'pass', '通过');
+          this.log(`✓ ${test.name} - 通过`, 'success');
+        } catch (error) {
+          this.results.fail++;
+          this.updateTestStatus(testId, 'fail', `失败: ${error.message}`);
+          this.log(`✗ ${test.name} - 失败: ${error.message}`, 'error');
+        }
+
+        this.updateStats();
+      }
+
+      // 断言方法
+      assert(condition, message) {
+        if (!condition) {
+          throw new Error(message || '断言失败');
+        }
+      }
+
+      assertEqual(actual, expected, message) {
+        if (actual !== expected) {
+          throw new Error(message || `期望 ${expected}，实际 ${actual}`);
+        }
+      }
+
+      assertDeepEqual(actual, expected, message) {
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+          throw new Error(message || `期望 ${JSON.stringify(expected)}，实际 ${JSON.stringify(actual)}`);
+        }
+      }
+
+      assertArrayLength(array, length, message) {
+        if (!Array.isArray(array) || array.length !== length) {
+          throw new Error(message || `期望数组长度 ${length}，实际 ${array?.length}`);
+        }
+      }
+
+      assertContains(str, substring, message) {
+        if (!str || !str.includes(substring)) {
+          throw new Error(message || `期望字符串包含 "${substring}"`);
+        }
+      }
+
+      assertNotNull(value, message) {
+        if (value === null || value === undefined) {
+          throw new Error(message || '值不应为空');
+        }
+      }
+
+      assertNull(value, message) {
+        if (value !== null && value !== undefined) {
+          throw new Error(message || `期望为空，实际 ${value}`);
+        }
+      }
+
+      // UI 更新方法
+      addTestToUI(id, module, name) {
+        const container = document.getElementById('testResults');
+        const sectionId = `section-${module}`;
+        let section = document.getElementById(sectionId);
+
+        if (!section) {
+          section = document.createElement('div');
+          section.id = sectionId;
+          section.className = 'test-section';
+          section.innerHTML = `<h2>${this.getModuleName(module)} 模块测试</h2>`;
+          container.appendChild(section);
+        }
+
+        const testCase = document.createElement('div');
+        testCase.id = id;
+        testCase.className = 'test-case running';
+        testCase.innerHTML = `
+          <div class="test-name">${name}</div>
+          <div class="test-result">运行中...</div>
+        `;
+        section.appendChild(testCase);
+      }
+
+      updateTestStatus(id, status, result) {
+        const testCase = document.getElementById(id);
+        if (testCase) {
+          testCase.className = `test-case ${status}`;
+          testCase.querySelector('.test-result').textContent = result;
+        }
+      }
+
+      updateStats() {
+        document.getElementById('totalCount').textContent = this.results.total;
+        document.getElementById('passCount').textContent = this.results.pass;
+        document.getElementById('failCount').textContent = this.results.fail;
+        document.getElementById('passRate').textContent = 
+          this.results.total > 0 ? `${Math.round((this.results.pass / this.results.total) * 100)}%` : '0%';
+      }
+
+      showOutput() {
+        document.getElementById('testOutput').classList.remove('hidden');
+      }
+
+      log(message, type = 'info') {
+        const output = document.getElementById('testOutput');
+        const line = document.createElement('div');
+        line.className = `log-${type}`;
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+      }
+
+      getModuleName(module) {
+        const names = {
+          utils: 'Utils 工具函数',
+          data: 'DataStore 数据层',
+          rss: 'RSSParser 解析器',
+          feeds: 'FeedsPage 订阅源',
+          reader: 'ReaderPage 阅读器',
+          bookmarks: 'BookmarksPage 书签',
+          tags: 'TagsPage 标签',
+          app: 'App 主应用'
+        };
+        return names[module] || module;
+      }
+
+      clear() {
+        document.getElementById('testResults').innerHTML = '';
+        document.getElementById('testOutput').innerHTML = '';
+        document.getElementById('testOutput').classList.add('hidden');
+        this.results = { total: 0, pass: 0, fail: 0 };
+        this.updateStats();
+      }
+    }
+
+    // 创建测试运行器
+    const runner = new TestRunner();
+
+    // ==================== Utils 模块测试 ====================
+    
+    runner.addTest('utils', 'generateId 生成唯一ID', () => {
+      const id1 = Utils.generateId();
+      const id2 = Utils.generateId();
+      runner.assertNotNull(id1, 'ID 不应为空');
+      runner.assert(id1 !== id2, '生成的 ID 应该唯一');
+      runner.assert(id1.length > 0, 'ID 长度应大于 0');
+    });
+
+    runner.addTest('utils', 'formatTime 格式化时间', () => {
+      const now = Date.now();
+      const oneMinuteAgo = now - 60 * 1000;
+      const oneHourAgo = now - 60 * 60 * 1000;
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+      runner.assertEqual(Utils.formatTime(now), '刚刚', '刚刚的时间应显示"刚刚"');
+      runner.assertContains(Utils.formatTime(oneMinuteAgo), '分钟前', '一分钟前应显示"X分钟前"');
+      runner.assertContains(Utils.formatTime(oneHourAgo), '小时前', '一小时前应显示"X小时前"');
+      runner.assertContains(Utils.formatTime(oneDayAgo), '天前', '一天前应显示"X天前"');
+    });
+
+    runner.addTest('utils', 'escapeHtml HTML转义', () => {
+      runner.assertEqual(Utils.escapeHtml('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;', '应正确转义 HTML 特殊字符');
+      runner.assertEqual(Utils.escapeHtml(''), '', '空字符串应返回空字符串');
+      runner.assertEqual(Utils.escapeHtml(null), '', 'null 应返回空字符串');
+      runner.assertEqual(Utils.escapeHtml('正常文本'), '正常文本', '普通文本不应被转义');
+    });
+
+    runner.addTest('utils', 'truncate 截断文本', () => {
+      const longText = '这是一段很长的文本，需要被截断处理';
+      runner.assertEqual(Utils.truncate(longText, 10), '这是一段很长的文本，...', '长文本应被正确截断');
+      runner.assertEqual(Utils.truncate('短文本', 10), '短文本', '短文本不应被截断');
+      runner.assertEqual(Utils.truncate('', 10), '', '空字符串应返回空字符串');
+      runner.assertEqual(Utils.truncate(null, 10), '', 'null 应返回空字符串');
+    });
+
+    runner.addTest('utils', 'getFaviconUrl 获取网站图标', () => {
+      const url = Utils.getFaviconUrl('https://www.example.com');
+      runner.assertNotNull(url, '应返回图标 URL');
+      runner.assertContains(url, 'example.com', 'URL 应包含域名');
+    });
+
+    runner.addTest('utils', 'getInitial 获取首字母', () => {
+      runner.assertEqual(Utils.getInitial('https://www.example.com'), 'E', '应返回域名首字母大写');
+      runner.assertEqual(Utils.getInitial('invalid-url'), '?', '无效 URL 应返回 "?"');
+    });
+
+    runner.addTest('utils', 'debounce 防抖函数', async () => {
+      let counter = 0;
+      const debouncedFn = Utils.debounce(() => counter++, 100);
+      
+      debouncedFn();
+      debouncedFn();
+      debouncedFn();
+      
+      runner.assertEqual(counter, 0, '防抖期间不应执行');
+      
+      await new Promise(resolve => setTimeout(resolve, 150));
+      runner.assertEqual(counter, 1, '防抖结束后应执行一次');
+    });
+
+    runner.addTest('utils', 'throttle 节流函数', async () => {
+      let counter = 0;
+      const throttledFn = Utils.throttle(() => counter++, 100);
+      
+      throttledFn();
+      throttledFn();
+      throttledFn();
+      
+      runner.assertEqual(counter, 1, '节流期间应只执行一次');
+      
+      await new Promise(resolve => setTimeout(resolve, 150));
+      throttledFn();
+      runner.assertEqual(counter, 2, '节流结束后应能再次执行');
+    });
+
+    runner.addTest('utils', 'extractSummary 提取摘要', () => {
+      const html = '<p>这是<b>一段</b>HTML内容，包含<strong>格式</strong>标签</p>';
+      const summary = Utils.extractSummary(html, 10);
+      runner.assertNotNull(summary, '应返回摘要');
+      runner.assert(summary.length <= 13, '摘要长度应不超过指定长度加省略号'); // 10 + "..."
+    });
+
+    runner.addTest('utils', 'getTagColor 获取标签颜色', () => {
+      const color1 = Utils.getTagColor('技术');
+      const color2 = Utils.getTagColor('设计');
+      runner.assertNotNull(color1, '应返回颜色值');
+      runner.assert(color1.startsWith('#'), '颜色应以 # 开头');
+      runner.assertEqual(Utils.getTagColor('技术'), color1, '相同标签应返回相同颜色');
+    });
+
+    runner.addTest('utils', 'splitTextIntoChunks 分割文本', () => {
+      const text = '第一句。第二句。第三句。';
+      const chunks = Utils.splitTextIntoChunks(text, 10);
+      runner.assert(Array.isArray(chunks), '应返回数组');
+      runner.assert(chunks.length > 0, '应至少有一个分块');
+    });
+
+    runner.addTest('utils', 'extractText 提取纯文本', () => {
+      const html = '<p>段落1</p><p>段落2</p><script>alert("xss")</script>';
+      const text = Utils.extractText(html);
+      runner.assertContains(text, '段落1', '应包含文本内容');
+      runner.assertContains(text, '段落2', '应包含文本内容');
+      runner.assert(!text.includes('<script>'), '不应包含 script 标签');
+    });
+
+    runner.addTest('utils', 'renderArticleSkeleton 生成骨架屏', () => {
+      const skeleton = Utils.renderArticleSkeleton(3);
+      runner.assertContains(skeleton, 'skeleton-article', '应包含骨架屏类名');
+      runner.assertContains(skeleton, 'skeleton-title', '应包含标题骨架');
+    });
+
+    runner.addTest('utils', 'renderReaderSkeleton 生成阅读器骨架屏', () => {
+      const skeleton = Utils.renderReaderSkeleton();
+      runner.assertContains(skeleton, 'skeleton-reader', '应包含阅读器骨架类名');
+    });
+
+    // ==================== DataStore 模块测试 ====================
+    
+    runner.addTest('data', 'get/set 缓存机制', () => {
+      // 清除缓存
+      DataStore.clearCache();
+      
+      // 测试设置和获取
+      DataStore.set('test_key', { value: 123 });
+      const data = DataStore.get('test_key');
+      runner.assertDeepEqual(data, { value: 123 }, '应正确存储和获取数据');
+      
+      // 测试缓存
+      const cached = DataStore.get('test_key');
+      runner.assertDeepEqual(cached, { value: 123 }, '缓存应返回相同数据');
+      
+      // 清除测试数据
+      localStorage.removeItem('test_key');
+      DataStore.clearCache('test_key');
+    });
+
+    runner.addTest('data', '订阅源 CRUD 操作', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.FEEDS);
+      DataStore.clearCache(DataStore.KEYS.FEEDS);
+      
+      // 添加订阅源
+      const feed = DataStore.addFeed({
+        title: '测试订阅源',
+        url: 'https://example.com/feed',
+        description: '测试描述'
+      });
+      
+      runner.assertNotNull(feed.id, '订阅源应有 ID');
+      runner.assertEqual(feed.title, '测试订阅源', '标题应正确');
+      
+      // 获取订阅源
+      const feeds = DataStore.getFeeds();
+      runner.assertArrayLength(feeds, 1, '应有一个订阅源');
+      
+      // 更新订阅源
+      const updated = DataStore.updateFeed(feed.id, { title: '更新后的标题' });
+      runner.assertEqual(updated.title, '更新后的标题', '标题应被更新');
+      
+      // 删除订阅源
+      DataStore.deleteFeed(feed.id);
+      const afterDelete = DataStore.getFeeds();
+      runner.assertArrayLength(afterDelete, 0, '删除后应没有订阅源');
+    });
+
+    runner.addTest('data', '文章 CRUD 操作', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.ARTICLES);
+      DataStore.clearCache(DataStore.KEYS.ARTICLES);
+      
+      // 添加文章
+      const articles = [
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now() },
+        { id: 'art2', title: '文章2', feedId: 'feed1', pubDate: Date.now() - 1000 }
+      ];
+      
+      const added = DataStore.addArticles(articles);
+      runner.assertEqual(added, 2, '应添加 2 篇文章');
+      
+      // 获取文章
+      const allArticles = DataStore.getArticles();
+      runner.assertArrayLength(allArticles, 2, '应有 2 篇文章');
+      
+      // 标记已读
+      DataStore.markArticleRead('art1');
+      const updatedArticles = DataStore.getArticles();
+      const art1 = updatedArticles.find(a => a.id === 'art1');
+      runner.assertEqual(art1.read, true, '文章应被标记为已读');
+      
+      // 切换收藏
+      DataStore.toggleArticleStar('art1');
+      const starredArticles = DataStore.getArticles();
+      const starredArt = starredArticles.find(a => a.id === 'art1');
+      runner.assertEqual(starredArt.starred, true, '文章应被收藏');
+      
+      // 全部标为已读
+      DataStore.markAllRead('feed1');
+      const allReadArticles = DataStore.getArticles();
+      const allRead = allReadArticles.every(a => a.read);
+      runner.assert(allRead, '所有文章应被标记为已读');
+    });
+
+    runner.addTest('data', '书签 CRUD 操作', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.BOOKMARKS);
+      DataStore.clearCache(DataStore.KEYS.BOOKMARKS);
+      
+      // 添加书签
+      const bookmark = DataStore.addBookmark({
+        title: '测试书签',
+        url: 'https://example.com',
+        description: '测试描述',
+        tags: ['测试', '标签']
+      });
+      
+      runner.assertNotNull(bookmark.id, '书签应有 ID');
+      runner.assertEqual(bookmark.title, '测试书签', '标题应正确');
+      
+      // 获取书签
+      const bookmarks = DataStore.getBookmarks();
+      runner.assertArrayLength(bookmarks, 1, '应有一个书签');
+      
+      // 更新书签
+      const updated = DataStore.updateBookmark(bookmark.id, { title: '更新后的书签' });
+      runner.assertEqual(updated.title, '更新后的书签', '标题应被更新');
+      
+      // 删除书签
+      DataStore.deleteBookmark(bookmark.id);
+      const afterDelete = DataStore.getBookmarks();
+      runner.assertArrayLength(afterDelete, 0, '删除后应没有书签');
+    });
+
+    runner.addTest('data', '标签 CRUD 操作', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.TAGS);
+      DataStore.clearCache(DataStore.KEYS.TAGS);
+      
+      // 添加标签
+      const added = DataStore.addTag('测试标签');
+      runner.assert(added, '标签应被成功添加');
+      
+      // 重复添加
+      const duplicate = DataStore.addTag('测试标签');
+      runner.assert(!duplicate, '重复标签不应被添加');
+      
+      // 获取标签
+      const tags = DataStore.getTags();
+      runner.assertArrayLength(tags, 1, '应有一个标签');
+      
+      // 删除标签
+      DataStore.deleteTag('测试标签');
+      const afterDelete = DataStore.getTags();
+      runner.assertArrayLength(afterDelete, 0, '删除后应没有标签');
+    });
+
+    runner.addTest('data', '分组 CRUD 操作', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.GROUPS);
+      DataStore.clearCache(DataStore.KEYS.GROUPS);
+      
+      // 添加分组
+      const added = DataStore.addGroup('测试分组');
+      runner.assert(added, '分组应被成功添加');
+      
+      // 重复添加
+      const duplicate = DataStore.addGroup('测试分组');
+      runner.assert(!duplicate, '重复分组不应被添加');
+      
+      // 获取分组
+      const groups = DataStore.getGroups();
+      runner.assertArrayLength(groups, 1, '应有一个分组');
+      
+      // 删除分组
+      DataStore.deleteGroup('测试分组');
+      const afterDelete = DataStore.getGroups();
+      runner.assertArrayLength(afterDelete, 0, '删除后应没有分组');
+    });
+
+    runner.addTest('data', '设置管理', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.SETTINGS);
+      DataStore.clearCache(DataStore.KEYS.SETTINGS);
+      
+      // 获取默认设置
+      const settings = DataStore.getSettings();
+      runner.assertNotNull(settings, '应返回设置对象');
+      runner.assertEqual(settings.fontSize, 16, '默认字体大小应为 16');
+      
+      // 保存设置
+      DataStore.saveSettings({ ...settings, fontSize: 18 });
+      const updated = DataStore.getSettings();
+      runner.assertEqual(updated.fontSize, 18, '字体大小应被更新');
+    });
+
+    runner.addTest('data', '文章清理策略', () => {
+      // 创建超过 500 篇文章
+      const articles = [];
+      for (let i = 0; i < 600; i++) {
+        articles.push({
+          id: `art_${i}`,
+          title: `文章 ${i}`,
+          feedId: 'feed1',
+          pubDate: Date.now() - i * 1000 * 60 * 60 * 24, // 每天一篇
+          starred: i < 10, // 前 10 篇收藏
+          read: false
+        });
+      }
+      
+      DataStore.saveArticles(articles);
+      
+      // 执行清理
+      const removed = DataStore.cleanupOldArticles();
+      runner.assert(removed > 0, '应清理一些文章');
+      
+      const remaining = DataStore.getArticles();
+      runner.assert(remaining.length <= 500, '剩余文章不应超过 500 篇');
+      
+      // 验证收藏的文章被保留
+      const starred = remaining.filter(a => a.starred);
+      runner.assertArrayLength(starred, 10, '收藏的文章应被保留');
+    });
+
+    runner.addTest('data', '导入导出功能', () => {
+      // 准备测试数据
+      const testData = {
+        version: 1,
+        exportedAt: Date.now(),
+        feeds: [{ id: 'feed1', title: '测试源' }],
+        articles: [{ id: 'art1', title: '测试文章' }],
+        bookmarks: [{ id: 'bm1', title: '测试书签' }],
+        tags: [{ name: '测试标签' }],
+        groups: ['测试分组'],
+        settings: { fontSize: 16 }
+      };
+      
+      // 导入数据
+      const result = DataStore.importAll(testData);
+      runner.assert(result, '导入应成功');
+      
+      // 验证导入的数据
+      const feeds = DataStore.getFeeds();
+      runner.assertArrayLength(feeds, 1, '应导入 1 个订阅源');
+      
+      const articles = DataStore.getArticles();
+      runner.assertArrayLength(articles, 1, '应导入 1 篇文章');
+      
+      // 导出数据
+      const exported = DataStore.exportAll();
+      runner.assertNotNull(exported, '应返回导出数据');
+      runner.assertEqual(exported.version, 1, '版本号应为 1');
+    });
+
+    // ==================== RSSParser 模块测试 ====================
+    
+    runner.addTest('rss', 'generateItemId 生成文章ID', () => {
+      const id1 = RSSParser.generateItemId('https://example.com/article1');
+      const id2 = RSSParser.generateItemId('https://example.com/article2');
+      const id3 = RSSParser.generateItemId('https://example.com/article1');
+      
+      runner.assertNotNull(id1, 'ID 不应为空');
+      runner.assert(id1.startsWith('art_'), 'ID 应以 "art_" 开头');
+      runner.assert(id1 !== id2, '不同内容应生成不同 ID');
+      runner.assertEqual(id1, id3, '相同内容应生成相同 ID');
+    });
+
+    runner.addTest('rss', 'getTitleFromUrl 从URL提取标题', () => {
+      runner.assertEqual(RSSParser.getTitleFromUrl('https://www.example.com'), 'example', '应提取域名');
+      runner.assertEqual(RSSParser.getTitleFromUrl('https://blog.example.com/path'), 'blog', '应提取子域名');
+      runner.assertEqual(RSSParser.getTitleFromUrl('invalid-url'), 'Unknown Feed', '无效 URL 应返回默认值');
+    });
+
+    runner.addTest('rss', 'getOriginUrl 获取源站URL', () => {
+      runner.assertEqual(RSSParser.getOriginUrl('https://example.com/feed'), 'https://example.com', '应返回源站 URL');
+      runner.assertEqual(RSSParser.getOriginUrl('https://blog.example.com/rss.xml'), 'https://blog.example.com', '应处理子域名');
+      runner.assertEqual(RSSParser.getOriginUrl('invalid-url'), 'invalid-url', '无效 URL 应返回原值');
+    });
+
+    runner.addTest('rss', 'parseRSS 解析 RSS 2.0', () => {
+      const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+          <channel>
+            <title>测试 RSS</title>
+            <link>https://example.com</link>
+            <description>测试描述</description>
+            <item>
+              <title>文章标题</title>
+              <link>https://example.com/article1</link>
+              <description>文章描述</description>
+              <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
+            </item>
+          </channel>
+        </rss>`;
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rssXml, 'text/xml');
+      const channel = doc.querySelector('channel');
+      
+      const result = RSSParser.parseRSS(channel, 'https://example.com/feed');
+      
+      runner.assertEqual(result.title, '测试 RSS', '标题应正确');
+      runner.assertEqual(result.link, 'https://example.com', '链接应正确');
+      runner.assertArrayLength(result.items, 1, '应有一篇文章');
+      runner.assertEqual(result.items[0].title, '文章标题', '文章标题应正确');
+    });
+
+    runner.addTest('rss', 'parseAtom 解析 Atom', () => {
+      const atomXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>测试 Atom</title>
+          <link rel="alternate" href="https://example.com"/>
+          <subtitle>测试描述</subtitle>
+          <entry>
+            <title>文章标题</title>
+            <link rel="alternate" href="https://example.com/article1"/>
+            <content>文章内容</content>
+            <updated>2024-01-01T00:00:00Z</updated>
+          </entry>
+        </feed>`;
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(atomXml, 'text/xml');
+      const feed = doc.querySelector('feed');
+      
+      const result = RSSParser.parseAtom(feed, 'https://example.com/feed');
+      
+      runner.assertEqual(result.title, '测试 Atom', '标题应正确');
+      runner.assertEqual(result.link, 'https://example.com', '链接应正确');
+      runner.assertArrayLength(result.items, 1, '应有一篇文章');
+      runner.assertEqual(result.items[0].title, '文章标题', '文章标题应正确');
+    });
+
+    runner.addTest('rss', 'parse 解析方法', () => {
+      // 测试 RSS 格式
+      const rssXml = `<?xml version="1.0"?><rss version="2.0"><channel><title>RSS</title></channel></rss>`;
+      const rssResult = RSSParser.parse(rssXml, 'https://example.com');
+      runner.assertEqual(rssResult.title, 'RSS', '应解析 RSS 格式');
+      
+      // 测试 Atom 格式
+      const atomXml = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Atom</title></feed>`;
+      const atomResult = RSSParser.parse(atomXml, 'https://example.com');
+      runner.assertEqual(atomResult.title, 'Atom', '应解析 Atom 格式');
+      
+      // 测试无效格式
+      try {
+        RSSParser.parse('invalid xml', 'https://example.com');
+        runner.assert(false, '应抛出错误');
+      } catch (error) {
+        runner.assertContains(error.message, 'XML格式错误', '应抛出 XML 格式错误');
+      }
+    });
+
+    // ==================== FeedsPage 模块测试 ====================
+    
+    runner.addTest('feeds', 'renderArticleList 文章列表渲染', () => {
+      // 准备测试数据
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), read: false, summary: '摘要1', tags: [] },
+        { id: 'art2', title: '文章2', feedId: 'feed1', pubDate: Date.now() - 1000, read: true, summary: '摘要2', tags: [] }
+      ]);
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+      `;
+      
+      // 测试渲染
+      FeedsPage.renderArticleList();
+      const articlesEl = document.getElementById('articles');
+      runner.assert(articlesEl.innerHTML.length > 0, '应渲染文章列表');
+      runner.assertContains(articlesEl.innerHTML, '文章1', '应包含文章标题');
+    });
+
+    runner.addTest('feeds', 'selectFeed 选择订阅源', () => {
+      // 准备测试数据
+      DataStore.saveFeeds([{ id: 'feed1', title: '测试源', url: 'https://example.com' }]);
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), read: false, summary: '摘要', tags: [] }
+      ]);
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="feedList"></div>
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+        <div id="readerEmpty" style="display:none;"></div>
+        <div id="readerContent" style="display:none;"></div>
+      `;
+      
+      // 测试选择
+      FeedsPage.selectFeed('feed1');
+      runner.assertEqual(App.currentFeedId, 'feed1', '当前订阅源 ID 应被更新');
+      runner.assertEqual(App.currentView, 'feed', '当前视图应为 feed');
+    });
+
+    runner.addTest('feeds', 'selectArticle 选择文章', () => {
+      // 准备测试数据
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), read: false, summary: '摘要', tags: [] }
+      ]);
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+        <div id="readerEmpty" style="display:none;"></div>
+        <div id="readerContent" style="display:none;"></div>
+        <div id="readerTitle"></div>
+        <div id="readerSource"></div>
+        <div id="readerDate"></div>
+        <div id="readerBody"></div>
+        <div id="readerTags"></div>
+        <a id="openLinkBtn"></a>
+        <button id="starBtn"></button>
+        <button id="translateBtn"></button>
+        <div id="sidebar" style="display:block;"></div>
+        <div id="mobileOverlay"></div>
+        <div id="reader" style="display:none;"></div>
+      `;
+      
+      // 测试选择
+      FeedsPage.selectArticle('art1');
+      runner.assertEqual(App.currentArticleId, 'art1', '当前文章 ID 应被更新');
+      
+      // 验证文章被标记为已读
+      const articles = DataStore.getArticles();
+      const art1 = articles.find(a => a.id === 'art1');
+      runner.assertEqual(art1.read, true, '文章应被标记为已读');
+    });
+
+    runner.addTest('feeds', 'toggleGroup 切换分组折叠', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div class="feed-group" data-group="测试分组">
+          <div class="feed-group-header"></div>
+          <div class="feed-group-items"></div>
+        </div>
+      `;
+      
+      // 清除本地存储
+      localStorage.removeItem('rss_collapsed_groups');
+      
+      // 测试折叠
+      const header = document.querySelector('.feed-group-header');
+      FeedsPage.toggleGroup(header);
+      
+      const group = document.querySelector('.feed-group');
+      runner.assert(group.classList.contains('collapsed'), '分组应被折叠');
+      
+      // 验证状态被保存
+      const collapsed = JSON.parse(localStorage.getItem('rss_collapsed_groups') || '[]');
+      runner.assert(collapsed.includes('测试分组'), '折叠状态应被保存');
+      
+      // 测试展开
+      FeedsPage.toggleGroup(header);
+      runner.assert(!group.classList.contains('collapsed'), '分组应被展开');
+    });
+
+    runner.addTest('feeds', 'restoreGroupState 恢复分组状态', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div class="feed-group" data-group="分组1">
+          <div class="feed-group-header"></div>
+          <div class="feed-group-items"></div>
+        </div>
+        <div class="feed-group" data-group="分组2">
+          <div class="feed-group-header"></div>
+          <div class="feed-group-items"></div>
+        </div>
+      `;
+      
+      // 设置折叠状态
+      localStorage.setItem('rss_collapsed_groups', JSON.stringify(['分组1']));
+      
+      // 恢复状态
+      FeedsPage.restoreGroupState();
+      
+      const group1 = document.querySelector('[data-group="分组1"]');
+      const group2 = document.querySelector('[data-group="分组2"]');
+      
+      runner.assert(group1.classList.contains('collapsed'), '分组1 应被折叠');
+      runner.assert(!group2.classList.contains('collapsed'), '分组2 不应被折叠');
+    });
+
+    // ==================== ReaderPage 模块测试 ====================
+    
+    runner.addTest('reader', 'processContent 处理文章内容', () => {
+      // 测试移除危险标签
+      const dangerousHtml = '<p>安全内容</p><script>alert("xss")</script><iframe src="evil"></iframe>';
+      const safeHtml = ReaderPage.processContent(dangerousHtml);
+      runner.assert(!safeHtml.includes('<script>'), '应移除 script 标签');
+      runner.assert(!safeHtml.includes('<iframe>'), '应移除 iframe 标签');
+      runner.assertContains(safeHtml, '安全内容', '应保留安全内容');
+      
+      // 测试移除事件属性
+      const eventHtml = '<div onclick="alert(\'xss\')">内容</div>';
+      const cleanHtml = ReaderPage.processContent(eventHtml);
+      runner.assert(!cleanHtml.includes('onclick'), '应移除 onclick 属性');
+      
+      // 测试移除 javascript: URI
+      const jsUriHtml = '<a href="javascript:alert(\'xss\')">链接</a>';
+      const safeLink = ReaderPage.processContent(jsUriHtml);
+      runner.assert(!safeLink.includes('javascript:'), '应移除 javascript: URI');
+      
+      // 测试图片处理
+      const imgHtml = '<img src="test.jpg" onerror="alert(\'xss\')">';
+      const processedImg = ReaderPage.processContent(imgHtml);
+      runner.assert(!processedImg.includes('onerror'), '应移除图片事件属性');
+      runner.assertContains(processedImg, 'loading="lazy"', '应添加懒加载属性');
+    });
+
+    runner.addTest('reader', 'toggleStar 切换收藏状态', () => {
+      // 准备测试数据
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), starred: false, read: false, summary: '', tags: [] }
+      ]);
+      
+      App.currentArticleId = 'art1';
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="readerEmpty" style="display:none;"></div>
+        <div id="readerContent" style="display:block;"></div>
+        <div id="readerTitle"></div>
+        <div id="readerSource"></div>
+        <div id="readerDate"></div>
+        <div id="readerBody"></div>
+        <div id="readerTags"></div>
+        <a id="openLinkBtn"></a>
+        <button id="starBtn"></button>
+        <button id="translateBtn"></button>
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+        <div id="feedList"></div>
+      `;
+      
+      // 测试收藏
+      ReaderPage.toggleStar();
+      const articles = DataStore.getArticles();
+      const art1 = articles.find(a => a.id === 'art1');
+      runner.assertEqual(art1.starred, true, '文章应被收藏');
+      
+      // 测试取消收藏
+      ReaderPage.toggleStar();
+      const updatedArticles = DataStore.getArticles();
+      const updatedArt1 = updatedArticles.find(a => a.id === 'art1');
+      runner.assertEqual(updatedArt1.starred, false, '文章应被取消收藏');
+    });
+
+    runner.addTest('reader', 'navigate 文章导航', () => {
+      // 准备测试数据
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), read: false, summary: '', tags: [] },
+        { id: 'art2', title: '文章2', feedId: 'feed1', pubDate: Date.now() - 1000, read: false, summary: '', tags: [] },
+        { id: 'art3', title: '文章3', feedId: 'feed1', pubDate: Date.now() - 2000, read: false, summary: '', tags: [] }
+      ]);
+      
+      App.currentArticleId = 'art1';
+      App.currentFeedId = 'feed1';
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+        <div id="readerEmpty" style="display:none;"></div>
+        <div id="readerContent" style="display:block;"></div>
+        <div id="readerTitle"></div>
+        <div id="readerSource"></div>
+        <div id="readerDate"></div>
+        <div id="readerBody"></div>
+        <div id="readerTags"></div>
+        <a id="openLinkBtn"></a>
+        <button id="starBtn"></button>
+        <button id="translateBtn"></button>
+        <div id="feedList"></div>
+      `;
+      
+      // 测试向下导航
+      ReaderPage.navigate('down');
+      runner.assertEqual(App.currentArticleId, 'art2', '应导航到下一篇文章');
+      
+      // 测试向上导航
+      ReaderPage.navigate('up');
+      runner.assertEqual(App.currentArticleId, 'art1', '应导航到上一篇文章');
+    });
+
+    // ==================== BookmarksPage 模块测试 ====================
+    
+    runner.addTest('bookmarks', 'addBookmark 添加书签', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.BOOKMARKS);
+      DataStore.clearCache(DataStore.KEYS.BOOKMARKS);
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <input id="bookmarkUrl" value="https://example.com">
+        <input id="bookmarkTitle" value="测试书签">
+        <input id="bookmarkDesc" value="测试描述">
+        <input id="bookmarkTags" value="标签1, 标签2">
+        <div id="addBookmarkModal" style="display:flex;"></div>
+        <div id="bookmarkGrid"></div>
+        <div id="mainContent"></div>
+      `;
+      
+      // 测试添加
+      BookmarksPage.addBookmark();
+      
+      const bookmarks = DataStore.getBookmarks();
+      runner.assertArrayLength(bookmarks, 1, '应有一个书签');
+      runner.assertEqual(bookmarks[0].title, '测试书签', '标题应正确');
+      runner.assertEqual(bookmarks[0].url, 'https://example.com', 'URL 应正确');
+      runner.assertArrayLength(bookmarks[0].tags, 2, '应有 2 个标签');
+    });
+
+    runner.addTest('bookmarks', 'editBookmark 编辑书签', () => {
+      // 准备测试数据
+      DataStore.saveBookmarks([
+        { id: 'bm1', title: '原始标题', url: 'https://example.com', description: '原始描述', tags: ['标签1'] }
+      ]);
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <input id="bookmarkUrl">
+        <input id="bookmarkTitle">
+        <input id="bookmarkDesc">
+        <input id="bookmarkTags">
+        <button id="confirmAddBookmark">添加</button>
+        <div id="addBookmarkModal" style="display:none;"></div>
+        <div id="bookmarkGrid"></div>
+        <div id="mainContent"></div>
+      `;
+      
+      // 测试编辑
+      BookmarksPage.editBookmark('bm1');
+      
+      const urlInput = document.getElementById('bookmarkUrl');
+      const titleInput = document.getElementById('bookmarkTitle');
+      
+      runner.assertEqual(urlInput.value, 'https://example.com', 'URL 应被填充');
+      runner.assertEqual(titleInput.value, '原始标题', '标题应被填充');
+    });
+
+    runner.addTest('bookmarks', 'deleteBookmark 删除书签', async () => {
+      // 准备测试数据
+      DataStore.saveBookmarks([
+        { id: 'bm1', title: '测试书签', url: 'https://example.com' }
+      ]);
+
+      // 模拟 ConfirmModal
+      const originalShow = ConfirmModal.show;
+      ConfirmModal.show = () => Promise.resolve(true);
+
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="bookmarkGrid"></div>
+        <div id="mainContent"></div>
+      `;
+
+      // 测试删除
+      await BookmarksPage.deleteBookmark('bm1');
+
+      const bookmarks = DataStore.getBookmarks();
+      runner.assertArrayLength(bookmarks, 0, '书签应被删除');
+
+      // 恢复
+      ConfirmModal.show = originalShow;
+    });
+
+    runner.addTest('bookmarks', 'resetAddModal 重置模态框', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <button id="confirmAddBookmark" onclick="BookmarksPage.editBookmark('test')">保存</button>
+      `;
+      
+      // 测试重置
+      BookmarksPage.resetAddModal();
+      
+      const btn = document.getElementById('confirmAddBookmark');
+      runner.assertEqual(btn.textContent, '添加', '按钮文本应重置为"添加"');
+    });
+
+    // ==================== TagsPage 模块测试 ====================
+    
+    runner.addTest('tags', 'addTag 添加标签', () => {
+      // 清除测试数据
+      localStorage.removeItem(DataStore.KEYS.TAGS);
+      DataStore.clearCache(DataStore.KEYS.TAGS);
+      
+      // 模拟 prompt
+      const originalPrompt = window.prompt;
+      window.prompt = () => '测试标签';
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="mainContent"></div>
+      `;
+      
+      // 测试添加
+      TagsPage.showAddTag();
+      
+      const tags = DataStore.getTags();
+      runner.assertArrayLength(tags, 1, '应有一个标签');
+      runner.assertEqual(tags[0].name, '测试标签', '标签名应正确');
+      
+      // 恢复 prompt
+      window.prompt = originalPrompt;
+    });
+
+    runner.addTest('tags', 'deleteTag 删除标签', async () => {
+      // 准备测试数据
+      DataStore.saveTags([{ name: '测试标签', createdAt: Date.now() }]);
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', tags: ['测试标签'], pubDate: Date.now(), read: false, summary: '' }
+      ]);
+
+      // 模拟 ConfirmModal
+      const originalShow = ConfirmModal.show;
+      ConfirmModal.show = () => Promise.resolve(true);
+
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="mainContent"></div>
+      `;
+
+      // 测试删除
+      await TagsPage.deleteTag('测试标签');
+
+      const tags = DataStore.getTags();
+      runner.assertArrayLength(tags, 0, '标签应被删除');
+
+      // 验证文章中的标签也被移除
+      const articles = DataStore.getArticles();
+      const art1 = articles.find(a => a.id === 'art1');
+      runner.assert(!art1.tags.includes('测试标签'), '文章中的标签应被移除');
+
+      // 恢复
+      ConfirmModal.show = originalShow;
+    });
+
+    runner.addTest('tags', 'filterByTag 按标签筛选', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="mainContent"></div>
+      `;
+      
+      // 测试筛选
+      App.currentTag = null;
+      TagsPage.filterByTag('测试标签');
+      runner.assertEqual(App.currentTag, '测试标签', '应设置当前标签');
+      
+      // 测试取消筛选
+      TagsPage.filterByTag('测试标签');
+      runner.assertNull(App.currentTag, '应清除当前标签');
+    });
+
+    // ==================== App 模块测试 ====================
+    
+    runner.addTest('app', 'initTheme 初始化主题', () => {
+      // 清除本地存储
+      localStorage.removeItem('rss_theme');
+      
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <button id="themeToggle"></button>
+        <svg id="themeIconDark"></svg>
+        <svg id="themeIconLight" style="display:none;"></svg>
+      `;
+      
+      // 测试默认主题
+      App.initTheme();
+      const theme = document.documentElement.getAttribute('data-theme');
+      runner.assertEqual(theme, 'dark', '默认主题应为 dark');
+    });
+
+    runner.addTest('app', 'toggleTheme 切换主题', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <button id="themeToggle"></button>
+        <svg id="themeIconDark"></svg>
+        <svg id="themeIconLight" style="display:none;"></svg>
+      `;
+      
+      // 设置初始主题
+      document.documentElement.setAttribute('data-theme', 'dark');
+      
+      // 测试切换到浅色
+      App.toggleTheme();
+      const lightTheme = document.documentElement.getAttribute('data-theme');
+      runner.assertEqual(lightTheme, 'light', '应切换到浅色主题');
+      
+      // 测试切换回深色
+      App.toggleTheme();
+      const darkTheme = document.documentElement.getAttribute('data-theme');
+      runner.assertEqual(darkTheme, 'dark', '应切换回深色主题');
+      
+      // 验证本地存储
+      const saved = localStorage.getItem('rss_theme');
+      runner.assertEqual(saved, 'dark', '主题应被保存到本地存储');
+    });
+
+    runner.addTest('app', 'markAllRead 全部标为已读', async () => {
+      // 准备测试数据
+      DataStore.saveArticles([
+        { id: 'art1', title: '文章1', feedId: 'feed1', pubDate: Date.now(), read: false, summary: '', tags: [] },
+        { id: 'art2', title: '文章2', feedId: 'feed1', pubDate: Date.now() - 1000, read: false, summary: '', tags: [] }
+      ]);
+
+      // 模拟 ConfirmModal
+      const originalShow = ConfirmModal.show;
+      ConfirmModal.show = () => Promise.resolve(true);
+
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="feedList"></div>
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+      `;
+
+      // 测试全部标为已读
+      await App.markAllRead();
+
+      const articles = DataStore.getArticles();
+      const allRead = articles.every(a => a.read);
+      runner.assert(allRead, '所有文章应被标记为已读');
+
+      // 恢复
+      ConfirmModal.show = originalShow;
+    });
+
+    runner.addTest('app', 'toggleSort 切换排序', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <button id="sortBtn" title="按新→旧排序"></button>
+        <div id="articles"></div>
+        <div id="listEmpty" style="display:none;"></div>
+        <h3 id="listTitle"></h3>
+      `;
+      
+      // 设置初始状态
+      App.sortAsc = false;
+      
+      // 测试切换到正序
+      App.toggleSort();
+      runner.assert(App.sortAsc, '应切换到正序');
+      
+      // 测试切换回倒序
+      App.toggleSort();
+      runner.assert(!App.sortAsc, '应切换回倒序');
+    });
+
+    runner.addTest('app', 'handleRoute 路由处理', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="mainContent"></div>
+        <template id="readerViewTemplate">
+          <aside class="sidebar" id="sidebar"></aside>
+          <section class="article-list" id="articleList"></section>
+          <article class="reader" id="reader"></article>
+        </template>
+      `;
+      
+      // 测试默认路由
+      window.location.hash = '#/';
+      App.handleRoute();
+      runner.assertEqual(App.currentView, 'reader', '默认视图应为 reader');
+      
+      // 测试书签路由
+      window.location.hash = '#/bookmarks';
+      App.handleRoute();
+      runner.assertEqual(App.currentView, 'bookmarks', '书签路由应切换到 bookmarks 视图');
+      
+      // 测试标签路由
+      window.location.hash = '#/tags';
+      App.handleRoute();
+      runner.assertEqual(App.currentView, 'tags', '标签路由应切换到 tags 视图');
+      
+      // 清除 hash
+      window.location.hash = '';
+    });
+
+    runner.addTest('app', 'showShortcutsModal 显示快捷键帮助', () => {
+      // 模拟 DOM
+      document.body.innerHTML = `
+        <div id="shortcutsModal" style="display:none;"></div>
+      `;
+      
+      // 测试显示
+      App.showShortcutsModal();
+      const modal = document.getElementById('shortcutsModal');
+      runner.assertEqual(modal.style.display, 'flex', '模态框应显示');
+      runner.assert(modal.classList.contains('open'), '应添加 open 类');
+    });
+
+    // ==================== 运行测试 ====================
+    
+    function runAllTests() {
+      runner.clear();
+      runner.runAll();
+    }
+
+    function runTestsByModule(module) {
+      runner.clear();
+      runner.runByModule(module);
+    }
+
+    function clearResults() {
+      runner.clear();
+    }
+  </script>
+</body>
+</html>
