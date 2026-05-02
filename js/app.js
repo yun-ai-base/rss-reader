@@ -152,6 +152,10 @@ const App = {
       if (modalId === 'addBookmarkModal') {
         BookmarksPage.resetAddModal();
       }
+      if (modalId === 'addFeedModal') {
+        this._editingFeedId = null;
+        document.getElementById('confirmAddFeed').textContent = '添加';
+      }
       modal.classList.add('closing');
       setTimeout(() => {
         modal.style.display = 'none';
@@ -307,8 +311,6 @@ const App = {
     modal.classList.add('open');
     document.getElementById('feedUrl').value = '';
     document.getElementById('feedName').value = '';
-    document.getElementById('confirmAddFeed').textContent = '添加';
-    this._editingFeedId = null;
     document.getElementById('feedUrl').focus();
   },
 
