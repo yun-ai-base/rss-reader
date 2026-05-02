@@ -78,7 +78,21 @@ const DataStore = {
   // ===== 订阅源 =====
 
   getFeeds() {
-    return this.get(this.KEYS.FEEDS) || [];
+    const feeds = this.get(this.KEYS.FEEDS) || [];
+    // 按URL去重，保留最新的
+    const urlMap = new Map();
+    for (const f of feeds) {
+      const existing = urlMap.get(f.url);
+      if (!existing || (f.createdAt || 0) > (existing.createdAt || 0)) {
+        urlMap.set(f.url, f);
+      }
+    }
+    if (urlMap.size < feeds.length) {
+      const deduped = [...urlMap.values()];
+      this.saveFeeds(deduped);
+      return deduped;
+    }
+    return feeds;
   },
 
   saveFeeds(feeds) {
