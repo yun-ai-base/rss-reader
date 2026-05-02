@@ -120,7 +120,8 @@ const App = {
     document.getElementById('refreshBtn')?.addEventListener('click', () => this.refreshAll());
 
     // 模态框按钮
-    document.getElementById('confirmAddFeed')?.addEventListener('click', () => this.addFeed());
+    const confirmAddFeedBtn = document.getElementById('confirmAddFeed');
+    if (confirmAddFeedBtn) confirmAddFeedBtn.onclick = () => this.addFeed();
     document.getElementById('confirmAddGroup')?.addEventListener('click', () => this.addGroup());
     document.getElementById('confirmAddBookmark')?.addEventListener('click', () => BookmarksPage.addBookmark());
     document.getElementById('confirmArticleTags')?.addEventListener('click', () => this.saveArticleTags());
