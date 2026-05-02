@@ -480,15 +480,20 @@ const SearchFeed = {
     el.innerHTML = results.map(item => {
       const feed = item;
       const title = feed.title || '未知源';
-      const url = feed.feedId || '';
+      let url = feed.feedId || '';
+      // Feedly 的 feedId 带 "feed/" 前缀，需要去掉
+      if (url.startsWith('feed/')) url = url.substring(5);
       const websiteUrl = feed.website || '';
       const description = feed.description || '';
       const subscribers = feed.subscribers || 0;
       const isAdded = existingUrls.has(url);
-      const faviconUrl = websiteUrl ? `https://www.google.com/s2/favicons?domain=${new URL(websiteUrl).hostname}&sz=32` : '';
+      let faviconUrl = '';
+      try {
+        faviconUrl = websiteUrl ? `https://www.google.com/s2/favicons?domain=${new URL(websiteUrl).hostname}&sz=32` : '';
+      } catch(e) {}
 
       return `
-        <div class="search-feed-item ${isAdded ? 'added' : ''}" data-url="${Utils.escapeHtml(url)}">
+        <div class="search-feed-item ${isAdded ? 'added' : ''}" data-url="${Utils.escapeHtml(url)}" data-title="${Utils.escapeHtml(title)}">
           <div class="search-feed-info">
             <div class="search-feed-title">
               ${faviconUrl ? `<img class="search-feed-favicon" src="${faviconUrl}" onerror="this.style.display='none'">` : ''}
@@ -501,7 +506,7 @@ const SearchFeed = {
             </div>
           </div>
           <button class="btn ${isAdded ? 'btn-secondary' : 'btn-primary'} btn-sm search-feed-add-btn"
-            onclick="SearchFeed.addFeed('${Utils.escapeHtml(url)}', '${Utils.escapeHtml(title).replace(/'/g, "\\'")}', this)"
+            onclick="SearchFeed.addFromBtn(this)"
             ${isAdded ? 'disabled' : ''}>
             ${isAdded ? '已添加' : '添加'}
           </button>
@@ -510,7 +515,10 @@ const SearchFeed = {
     }).join('');
   },
 
-  async addFeed(url, title, btn) {
+  async addFromBtn(btn) {
+    const item = btn.closest('.search-feed-item');
+    const url = item.dataset.url;
+    const title = item.dataset.title;
     btn.disabled = true;
     btn.textContent = '添加中...';
 
@@ -519,11 +527,11 @@ const SearchFeed = {
       btn.textContent = '已添加';
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-secondary');
-      btn.closest('.search-feed-item').classList.add('added');
+      item.classList.add('added');
     } catch (e) {
       btn.disabled = false;
       btn.textContent = '添加';
-      Toast.show('添加失败: ' + e.message, 'error');
+      Utils.toast('添加失败: ' + e.message, 'error');
     }
   }
 };
