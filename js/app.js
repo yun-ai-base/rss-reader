@@ -8,6 +8,7 @@ const App = {
   currentArticleId: null,
   currentTag: null,
   showUnreadOnly: false,
+  _editingFeedId: null, // 正在编辑的订阅源ID，null表示添加模式
   searchQuery: '',
   isRefreshing: false,
   sortAsc: false, // false=倒序(最新在前), true=正序(最旧在前)
@@ -121,7 +122,7 @@ const App = {
 
     // 模态框按钮
     const confirmAddFeedBtn = document.getElementById('confirmAddFeed');
-    if (confirmAddFeedBtn) confirmAddFeedBtn.onclick = () => this.addFeed();
+    if (confirmAddFeedBtn) confirmAddFeedBtn.onclick = () => this.handleAddFeedConfirm();
     document.getElementById('confirmAddGroup')?.addEventListener('click', () => this.addGroup());
     document.getElementById('confirmAddBookmark')?.addEventListener('click', () => BookmarksPage.addBookmark());
     document.getElementById('confirmArticleTags')?.addEventListener('click', () => this.saveArticleTags());
@@ -306,7 +307,17 @@ const App = {
     modal.classList.add('open');
     document.getElementById('feedUrl').value = '';
     document.getElementById('feedName').value = '';
+    document.getElementById('confirmAddFeed').textContent = '添加';
+    this._editingFeedId = null;
     document.getElementById('feedUrl').focus();
+  },
+
+  closeAddFeedModal() {
+    const modal = document.getElementById('addFeedModal');
+    modal.style.display = 'none';
+    modal.classList.remove('open');
+    this._editingFeedId = null;
+    document.getElementById('confirmAddFeed').textContent = '添加';
   },
 
   showSearchFeedModal() {
@@ -404,9 +415,7 @@ const App = {
       }));
       DataStore.addArticles(articles);
 
-      const addFeedModal = document.getElementById('addFeedModal');
-      addFeedModal.style.display = 'none';
-      addFeedModal.classList.remove('open');
+      this.closeAddFeedModal();
       FeedsPage.render();
       FeedsPage.renderArticleList();
       Utils.toast(`已添加订阅源: ${feed.title}，${articles.length} 篇文章`, 'success');
@@ -414,7 +423,6 @@ const App = {
       Utils.toast(`添加失败: ${error.message}`, 'error');
     } finally {
       this._isAddingFeed = false;
-      confirmBtn.textContent = originalText;
       confirmBtn.disabled = false;
     }
   },
@@ -457,14 +465,22 @@ const App = {
     const feed = DataStore.getFeeds().find(f => f.id === id);
     if (!feed) return;
 
+    this._editingFeedId = id;
     this.showAddFeedModal();
     document.getElementById('feedUrl').value = feed.url;
     document.getElementById('feedName').value = feed.title;
     document.getElementById('feedGroup').value = feed.group || '';
+    document.getElementById('confirmAddFeed').textContent = '保存';
+  },
 
-    const confirmBtn = document.getElementById('confirmAddFeed');
-    confirmBtn.textContent = '保存';
-    confirmBtn.onclick = async () => {
+  /**
+   * 统一处理添加/编辑订阅源确认
+   */
+  async handleAddFeedConfirm() {
+    if (this._editingFeedId) {
+      // 编辑模式：更新订阅源
+      const id = this._editingFeedId;
+      const feed = DataStore.getFeeds().find(f => f.id === id);
       const url = document.getElementById('feedUrl').value.trim();
       const name = document.getElementById('feedName').value.trim();
       const group = document.getElementById('feedGroup').value;
@@ -475,14 +491,15 @@ const App = {
       }
 
       DataStore.updateFeed(id, { title: name || feed.title, url, group });
-      const modal = document.getElementById('addFeedModal');
-      modal.style.display = 'none';
-      modal.classList.remove('open');
-      confirmBtn.textContent = '添加';
-      confirmBtn.onclick = () => this.addFeed();
-      this.showFeedsPage();
+      this._editingFeedId = null;
+      this.closeAddFeedModal();
+      if (this.currentView === 'feeds') this.showFeedsPage();
+      else { FeedsPage.render(); FeedsPage.renderArticleList(); }
       Utils.toast('订阅源已更新', 'success');
-    };
+    } else {
+      // 添加模式
+      await this.addFeed();
+    }
   },
 
   /**
