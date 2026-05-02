@@ -6,9 +6,17 @@ const FeedsPage = {
   currentPage: 1,
 
   render() {
-    const feeds = DataStore.getFeeds();
+    const allFeeds = DataStore.getFeeds();
     const groups = DataStore.getGroups();
     const articles = DataStore.getArticles();
+
+    // 按ID去重，防止同一订阅源出现多次
+    const seen = new Set();
+    const feeds = allFeeds.filter(f => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
 
     // 按分组组织
     const grouped = {};
@@ -274,9 +282,17 @@ const FeedsPage = {
    */
   renderManagePage() {
     const mainContent = document.querySelector('.main');
-    const feeds = DataStore.getFeeds();
+    const allFeeds = DataStore.getFeeds();
     const groups = DataStore.getGroups();
     const articles = DataStore.getArticles();
+
+    // 去重
+    const seen = new Set();
+    const feeds = allFeeds.filter(f => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
 
     // 计算未读数
     feeds.forEach(feed => {

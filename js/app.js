@@ -479,27 +479,27 @@ const App = {
    * 统一处理添加/编辑订阅源确认
    */
   async handleAddFeedConfirm() {
-    if (this._editingFeedId) {
-      // 编辑模式：更新订阅源
-      const id = this._editingFeedId;
-      const feed = DataStore.getFeeds().find(f => f.id === id);
-      const url = document.getElementById('feedUrl').value.trim();
-      const name = document.getElementById('feedName').value.trim();
-      const group = document.getElementById('feedGroup').value;
+    const url = document.getElementById('feedUrl').value.trim();
+    const name = document.getElementById('feedName').value.trim();
+    const group = document.getElementById('feedGroup').value;
 
-      if (!url) {
-        Utils.toast('请输入RSS地址', 'error');
-        return;
-      }
+    if (!url) {
+      Utils.toast('请输入RSS地址', 'error');
+      return;
+    }
 
-      DataStore.updateFeed(id, { title: name || feed.title, url, group });
+    // 检查是否已存在同URL的订阅源（编辑模式）
+    const existing = DataStore.getFeeds().find(f => f.id === this._editingFeedId || f.url === url);
+    if (existing) {
+      DataStore.updateFeed(existing.id, { title: name || existing.title, url, group });
       this._editingFeedId = null;
       this.closeAddFeedModal();
+      FeedsPage.render();
+      FeedsPage.renderArticleList();
       if (this.currentView === 'feeds') this.showFeedsPage();
-      else { FeedsPage.render(); FeedsPage.renderArticleList(); }
       Utils.toast('订阅源已更新', 'success');
     } else {
-      // 添加模式
+      // 新增模式
       await this.addFeed();
     }
   },
